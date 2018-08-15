@@ -17,8 +17,21 @@ namespace Topshelf
         /// <summary>
         ///   Restart the service after waiting the delay period specified
         /// </summary>
+        /// <param name="delay"></param>
+        ServiceRecoveryConfigurator RestartService(System.TimeSpan delay);
+
+        /// <summary>
+        ///   Restart the service after waiting the delay period in minutes
+        /// </summary>
         /// <param name="delayInMinutes"> </param>
         ServiceRecoveryConfigurator RestartService(int delayInMinutes);
+
+        /// <summary>
+        ///   Restart the computer after waiting the delay period specified
+        /// </summary>
+        /// <param name="delay"></param>
+        /// <param name="message"></param>
+        ServiceRecoveryConfigurator RestartComputer(System.TimeSpan delay, string message);
 
         /// <summary>
         ///   Restart the computer after waiting the delay period in minutes
@@ -26,6 +39,13 @@ namespace Topshelf
         /// <param name="delayInMinutes"> </param>
         /// <param name="message"> </param>
         ServiceRecoveryConfigurator RestartComputer(int delayInMinutes, string message);
+
+        /// <summary>
+        ///   Run the command specified
+        /// </summary>
+        /// <param name="delay"></param>
+        /// <param name="command"> </param>
+        ServiceRecoveryConfigurator RunProgram(System.TimeSpan delay, string command);
 
         /// <summary>
         ///   Run the command specified
@@ -41,7 +61,7 @@ namespace Topshelf
         ServiceRecoveryConfigurator SetResetPeriod(int days);
 
         /// <summary>
-        /// Specifies that the recovery actions should only be taken on a service crash. If the service exists
+        /// Specifies that the recovery actions should only be taken on a service crash. If the service exits
         /// with a non-zero exit code, it will not be restarted.
         /// </summary>
         void OnCrashOnly();

@@ -13,6 +13,7 @@
 namespace SampleTopshelfService
 {
     using System;
+    using Serilog;
     using Topshelf;
 
     class Program
@@ -21,7 +22,11 @@ namespace SampleTopshelfService
         {
             return (int)HostFactory.Run(x =>
                 {
-                    x.UseLog4Net("log4net.config");
+                    Log.Logger = new LoggerConfiguration()
+                        .MinimumLevel.Debug()
+                        .WriteTo.ColoredConsole()
+                        .CreateLogger();
+                    x.UseSerilog();
 
                     x.UseAssemblyInfoForServiceInfo();
 

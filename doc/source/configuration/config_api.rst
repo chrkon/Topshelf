@@ -213,7 +213,9 @@ Services can be configured to run as a number of different identities, using the
         x.RunAs("username", "password");
     });
 
-Runs the service using the specified username and password. This can also be configured using the command-line.
+Runs the service using the specified username and password. This can also be configured using the command-line. 
+Please be sure to include the domain or UPN suffix in the username value e.g. **domain\\username** or **username@suffix.com**.
+
 
 .. sourcecode:: csharp
 
@@ -255,7 +257,7 @@ Runs the service using the local service account.
 Custom Install Actions
 ======================
 
-These settings allow user-specified code to be executed during the service install/uninstall process.
+These actions allow user-specified code to be executed during the service install/uninstall process. Each install action takes a *settings* parameter of type Topshelf.HostSettings, providing you with an API to service-related properties such as the *InstanceName*, *ServiceName*, etc.
 
 Before Install Actions
 ----------------------
@@ -266,7 +268,7 @@ Topshelf allows actions to be specified that are executed before the service is 
 
     HostFactory.New(x =>
     {
-        x.BeforeInstall(() => { ... });
+        x.BeforeInstall(settings => { ... });
     });
 
 
@@ -279,7 +281,7 @@ Topshelf allows actions to be specified that are executed after the service is i
 
     HostFactory.New(x =>
     {
-        x.AfterInstall(() => { ... });
+        x.AfterInstall(settings => { ... });
     });
 
 Before Uninstall Actions

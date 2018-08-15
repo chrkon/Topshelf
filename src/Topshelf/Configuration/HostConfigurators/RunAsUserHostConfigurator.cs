@@ -28,14 +28,14 @@ namespace Topshelf.HostConfigurators
             Password = password;
         }
 
-        public string Password { get; private set; }
-        public string Username { get; private set; }
+        public string Password { get; }
+        public string Username { get; }
 
         public HostBuilder Configure(HostBuilder builder)
         {
             if (builder == null)
-                throw new ArgumentNullException("builder");
-
+                throw new ArgumentNullException(nameof(builder));
+            
             builder.Match<InstallBuilder>(x => x.RunAs(Username, Password, ServiceAccount.User));
 
             return builder;

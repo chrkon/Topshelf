@@ -21,7 +21,7 @@ namespace Topshelf.HostConfigurators
     using Logging;
     using Options;
     using Runtime;
-    using Runtime.Windows;
+   using Runtime.Windows;
 
 
     public class HostConfiguratorImpl :
@@ -108,12 +108,12 @@ namespace Topshelf.HostConfigurators
 
         public void SetStartTimeout(TimeSpan startTimeOut)
         {
-          _settings.StartTimeOut = startTimeOut;
+            _settings.StartTimeOut = startTimeOut;
         }
 
         public void SetStopTimeout(TimeSpan stopTimeOut)
         {
-          _settings.StopTimeOut = stopTimeOut;
+            _settings.StopTimeOut = stopTimeOut;
         }
 
         public void EnablePauseAndContinue()
@@ -191,8 +191,8 @@ namespace Topshelf.HostConfigurators
         {
             Type type = typeof(HostFactory);
             HostLogger.Get<HostConfiguratorImpl>()
-                      .InfoFormat("{0} v{1}, .NET Framework v{2}", type.Namespace, type.Assembly.GetName().Version,
-                          Environment.Version);
+                .InfoFormat("{0} v{1}, .NET Framework v{2}", type.Namespace, type.Assembly.GetName().Version,
+                    Environment.Version);
 
             EnvironmentBuilder environmentBuilder = _environmentBuilderFactory(this);
 
@@ -205,7 +205,16 @@ namespace Topshelf.HostConfigurators
             foreach (HostBuilderConfigurator configurator in _configurators)
                 builder = configurator.Configure(builder);
 
-            return builder.Build(serviceBuilder);
+            try
+            {
+                return builder.Build(serviceBuilder);
+            }
+            //Intercept exceptions from serviceBuilder, TopShelf handling is in HostFactory
+            catch (Exception ex)
+            {
+                builder.Settings?.ExceptionCallback(ex);
+                throw;
+            }
         }
 
         void ApplyCommandLineOptions(IEnumerable<Option> options)
@@ -232,6 +241,6 @@ namespace Topshelf.HostConfigurators
         static EnvironmentBuilder DefaultEnvironmentBuilderFactory(HostConfigurator configurator)
         {
             return new WindowsHostEnvironmentBuilder(configurator);
-        }
+        }   
     }
 }

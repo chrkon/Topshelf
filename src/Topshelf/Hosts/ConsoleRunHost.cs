@@ -16,11 +16,11 @@ namespace Topshelf.Hosts
     using System.Diagnostics;
     using System.IO;
     using System.Threading;
-#if !NET35
     using System.Threading.Tasks;
-#endif
     using Logging;
+#if !NETCORE
     using Microsoft.Win32;
+#endif
     using Runtime;
 
 
@@ -41,14 +41,15 @@ namespace Topshelf.Hosts
         public ConsoleRunHost(HostSettings settings, HostEnvironment environment, ServiceHandle serviceHandle)
         {
             if (settings == null)
-                throw new ArgumentNullException("settings");
+                throw new ArgumentNullException(nameof(settings));
             if (environment == null)
-                throw new ArgumentNullException("environment");
+                throw new ArgumentNullException(nameof(environment));
 
             _settings = settings;
             _environment = environment;
             _serviceHandle = serviceHandle;
 
+#if !NETCORE
             if (settings.CanSessionChanged)
             {
                 SystemEvents.SessionSwitch += OnSessionChanged;
@@ -58,22 +59,8 @@ namespace Topshelf.Hosts
             {
                 SystemEvents.PowerModeChanged += OnPowerModeChanged;
             }
+    #endif
         }
-
-        void OnSessionChanged(object sender, SessionSwitchEventArgs e)
-        {
-            var arguments = new ConsoleSessionChangedArguments(e.Reason);
-
-            _serviceHandle.SessionChanged(this, arguments);
-        }
-
-        void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
-        {
-            var arguments = new ConsolePowerEventArguments(e.Mode);
-
-            _serviceHandle.PowerEvent(this, arguments);
-        }
-
 
         public TopshelfExitCode Run()
         {
@@ -148,6 +135,12 @@ namespace Topshelf.Hosts
             _exit.Set();
         }
 
+        void HostControl.Stop(TopshelfExitCode exitCode)
+        {
+            _log.Info($"Service Stop requested with exit code {exitCode}, exiting.");
+            _exitCode = exitCode;
+            _exit.Set();
+        }
 
         void HostControl.Restart()
         {
@@ -158,9 +151,9 @@ namespace Topshelf.Hosts
 
         void CatchUnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            _settings.ExceptionCallback?.Invoke((Exception)e.ExceptionObject);
+            _settings.ExceptionCallback?.Invoke((Exception) e.ExceptionObject);
 
-            _log.Fatal("The service threw an unhandled exception", (Exception)e.ExceptionObject);
+            _log.Fatal("The service threw an unhandled exception", (Exception) e.ExceptionObject);
 
             HostLogger.Shutdown();
 
@@ -169,13 +162,11 @@ namespace Topshelf.Hosts
                 _exitCode = TopshelfExitCode.UnhandledServiceException;
                 _exit.Set();
 
-#if !NET35
                 // it isn't likely that a TPL thread should land here, but if it does let's no block it
                 if (Task.CurrentId.HasValue)
                 {
                     return;
                 }
-#endif
 
                 // this is evil, but perhaps a good thing to let us clean up properly.
                 int deadThreadId = Interlocked.Increment(ref _deadThread);
@@ -204,6 +195,7 @@ namespace Topshelf.Hosts
                 _settings.ExceptionCallback?.Invoke(ex);
 
                 _log.Error("The service did not shut down gracefully", ex);
+                _exitCode = TopshelfExitCode.StopServiceFailed;
             }
             finally
             {
@@ -240,56 +232,59 @@ namespace Topshelf.Hosts
             }
         }
 
+#if !NETCORE
+        void OnSessionChanged(object sender, SessionSwitchEventArgs e)
+        {
+            var arguments = new ConsoleSessionChangedArguments(e.Reason);
+
+            _serviceHandle.SessionChanged(this, arguments);
+        }
+
+        void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+        {
+            var arguments = new ConsolePowerEventArguments(e.Mode);
+
+            _serviceHandle.PowerEvent(this, arguments);
+        }
+
 
         class ConsoleSessionChangedArguments :
             SessionChangedArguments
         {
-            readonly SessionChangeReasonCode _reasonCode;
-            readonly int _sessionId;
-
             public ConsoleSessionChangedArguments(SessionSwitchReason reason)
             {
-                _reasonCode = (SessionChangeReasonCode)Enum.ToObject(typeof(SessionChangeReasonCode), (int)reason);
-                _sessionId = Process.GetCurrentProcess().SessionId;
+                ReasonCode = (SessionChangeReasonCode) Enum.ToObject(typeof(SessionChangeReasonCode), (int) reason);
+                SessionId = Process.GetCurrentProcess().SessionId;
             }
 
-            public SessionChangeReasonCode ReasonCode
-            {
-                get { return _reasonCode; }
-            }
+            public SessionChangeReasonCode ReasonCode { get; }
 
-            public int SessionId
-            {
-                get { return _sessionId; }
-            }
+            public int SessionId { get; }
         }
 
         class ConsolePowerEventArguments :
             PowerEventArguments
         {
-            readonly PowerEventCode _eventCode;
             public ConsolePowerEventArguments(PowerModes powerMode)
             {
                 switch (powerMode)
                 {
                     case PowerModes.Resume:
-                        _eventCode = PowerEventCode.ResumeAutomatic; 
+                        EventCode = PowerEventCode.ResumeAutomatic;
                         break;
                     case PowerModes.StatusChange:
-                        _eventCode = PowerEventCode.PowerStatusChange;
+                        EventCode = PowerEventCode.PowerStatusChange;
                         break;
                     case PowerModes.Suspend:
-                        _eventCode = PowerEventCode.Suspend;
+                        EventCode = PowerEventCode.Suspend;
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(powerMode), powerMode, null);
                 }
             }
 
-            public PowerEventCode EventCode
-            {
-                get { return _eventCode; }
-            }
+            public PowerEventCode EventCode { get; }
         }
+#endif
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright 2007-2013 Chris Patterson, Dru Sellers, Travis Smith, et. al.
+﻿// Copyright 2007-2018 Chris Patterson, Dru Sellers, Travis Smith, et. al.
 //  
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use 
 // this file except in compliance with the License. You may obtain a copy of the 
@@ -18,8 +18,8 @@ namespace Topshelf.Runtime.Windows
     using System.ServiceProcess;
     using System.Threading;
     using System.Threading.Tasks;
-    using Logging;
     using HostConfigurators;
+    using Logging;
 
     public class WindowsServiceHost :
         ServiceBase,
@@ -27,10 +27,10 @@ namespace Topshelf.Runtime.Windows
         HostControl
     {
         static readonly LogWriter _log = HostLogger.Get<WindowsServiceHost>();
+        readonly HostConfigurator _configurator;
         readonly HostEnvironment _environment;
         readonly ServiceHandle _serviceHandle;
         readonly HostSettings _settings;
-        readonly HostConfigurator _configurator;
         int _deadThread;
         bool _disposed;
         Exception _unhandledException;
@@ -38,9 +38,9 @@ namespace Topshelf.Runtime.Windows
         public WindowsServiceHost(HostEnvironment environment, HostSettings settings, ServiceHandle serviceHandle, HostConfigurator configurator)
         {
             if (settings == null)
-                throw new ArgumentNullException("settings");
+                throw new ArgumentNullException(nameof(settings));
             if (serviceHandle == null)
-                throw new ArgumentNullException("serviceHandle");
+                throw new ArgumentNullException(nameof(serviceHandle));
 
             _settings = settings;
             _serviceHandle = serviceHandle;
@@ -60,17 +60,16 @@ namespace Topshelf.Runtime.Windows
 
             AppDomain.CurrentDomain.UnhandledException += CatchUnhandledException;
 
-            ExitCode = (int)TopshelfExitCode.Ok;
+            ExitCode = (int) TopshelfExitCode.Ok;
 
             _log.Info("Starting as a Windows service");
 
             if (!_environment.IsServiceInstalled(_settings.ServiceName))
             {
-                string message = string.Format("The {0} service has not been installed yet. Please run '{1} install'.",
-                    _settings, Assembly.GetEntryAssembly().GetName());
+                string message = $"The {_settings} service has not been installed yet. Please run '{Assembly.GetEntryAssembly().GetName()} install'.";
                 _log.Fatal(message);
 
-                ExitCode = (int)TopshelfExitCode.ServiceNotInstalled;
+                ExitCode = (int) TopshelfExitCode.ServiceNotInstalled;
                 throw new TopshelfException(message);
             }
 
@@ -78,14 +77,14 @@ namespace Topshelf.Runtime.Windows
 
             Run(this);
 
-            return (TopshelfExitCode)Enum.ToObject(typeof(TopshelfExitCode), ExitCode);
+            return (TopshelfExitCode) Enum.ToObject(typeof(TopshelfExitCode), ExitCode);
         }
 
         void HostControl.RequestAdditionalTime(TimeSpan timeRemaining)
         {
             _log.DebugFormat("Requesting additional time: {0}", timeRemaining);
 
-            RequestAdditionalTime((int)timeRemaining.TotalMilliseconds);
+            RequestAdditionalTime((int) timeRemaining.TotalMilliseconds);
         }
 
         void HostControl.Restart()
@@ -97,9 +96,22 @@ namespace Topshelf.Runtime.Windows
 
         void HostControl.Stop()
         {
+            InternalStop();
+        }
+
+        void HostControl.Stop(TopshelfExitCode exitCode)
+        {
+            InternalStop(exitCode);
+        }
+
+        void InternalStop(TopshelfExitCode? exitCode = null)
+
+        {
             if (CanStop)
             {
                 _log.Debug("Stop requested by hosted service");
+                if (exitCode.HasValue)
+                    ExitCode = (int) exitCode.Value;
                 Stop();
             }
             else
@@ -135,7 +147,7 @@ namespace Topshelf.Runtime.Windows
 
                 _log.Fatal("The service did not start successfully", ex);
 
-                ExitCode = (int)TopshelfExitCode.StartServiceFailed;
+                ExitCode = (int) TopshelfExitCode.StartServiceFailed;
                 throw;
             }
         }
@@ -156,13 +168,13 @@ namespace Topshelf.Runtime.Windows
                 _settings.ExceptionCallback?.Invoke(ex);
 
                 _log.Fatal("The service did not shut down gracefully", ex);
-                ExitCode = (int)TopshelfExitCode.StopServiceFailed;
+                ExitCode = (int) TopshelfExitCode.StopServiceFailed;
                 throw;
             }
 
             if (_unhandledException != null)
             {
-                ExitCode = (int)TopshelfExitCode.UnhandledServiceException;
+                ExitCode = (int) TopshelfExitCode.UnhandledServiceException;
                 _log.Info("[Topshelf] Unhandled exception detected, rethrowing to cause application to restart.");
                 throw new InvalidOperationException("An unhandled exception was detected", _unhandledException);
             }
@@ -223,7 +235,7 @@ namespace Topshelf.Runtime.Windows
                 _settings.ExceptionCallback?.Invoke(ex);
 
                 _log.Fatal("The service did not shut down gracefully", ex);
-                ExitCode = (int)TopshelfExitCode.StopServiceFailed;
+                ExitCode = (int) TopshelfExitCode.StopServiceFailed;
                 throw;
             }
         }
@@ -245,7 +257,7 @@ namespace Topshelf.Runtime.Windows
                 _settings.ExceptionCallback?.Invoke(ex);
 
                 _log.Fatal("The did not handle Service session change correctly", ex);
-                ExitCode = (int)TopshelfExitCode.StopServiceFailed;
+                ExitCode = (int) TopshelfExitCode.StopServiceFailed;
                 throw;
             }
         }
@@ -258,7 +270,7 @@ namespace Topshelf.Runtime.Windows
 
                 var arguments = new WindowsPowerEventArguments(powerStatus);
 
-                var result = _serviceHandle.PowerEvent(this, arguments);
+                bool result = _serviceHandle.PowerEvent(this, arguments);
 
                 _log.Info("[Topshelf] Power event handled");
 
@@ -269,10 +281,9 @@ namespace Topshelf.Runtime.Windows
                 _settings.ExceptionCallback?.Invoke(ex);
 
                 _log.Fatal("The service did handle the Power event correctly", ex);
-                ExitCode = (int)TopshelfExitCode.StopServiceFailed;
+                ExitCode = (int) TopshelfExitCode.StopServiceFailed;
                 throw;
             }
-
         }
 
         protected override void OnCustomCommand(int command)
@@ -297,8 +308,7 @@ namespace Topshelf.Runtime.Windows
         {
             if (disposing && !_disposed)
             {
-                if (_serviceHandle != null)
-                    _serviceHandle.Dispose();
+                _serviceHandle?.Dispose();
 
                 _disposed = true;
             }
@@ -308,9 +318,9 @@ namespace Topshelf.Runtime.Windows
 
         void CatchUnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            _settings.ExceptionCallback?.Invoke((Exception)e.ExceptionObject);
+            _settings.ExceptionCallback?.Invoke((Exception) e.ExceptionObject);
 
-            _log.Fatal("The service threw an unhandled exception", (Exception)e.ExceptionObject);
+            _log.Fatal("The service threw an unhandled exception", (Exception) e.ExceptionObject);
 
             HostLogger.Shutdown();
 
@@ -319,7 +329,7 @@ namespace Topshelf.Runtime.Windows
 //                return;
 //          This needs to be a configuration option to avoid breaking compatibility
 
-            ExitCode = (int)TopshelfExitCode.UnhandledServiceException;
+            ExitCode = (int) TopshelfExitCode.UnhandledServiceException;
             _unhandledException = (Exception) e.ExceptionObject;
 
             Stop();
@@ -331,7 +341,7 @@ namespace Topshelf.Runtime.Windows
 
             int deadThreadId = Interlocked.Increment(ref _deadThread);
             Thread.CurrentThread.IsBackground = true;
-            Thread.CurrentThread.Name = "Unhandled Exception " + deadThreadId.ToString();
+            Thread.CurrentThread.Name = "Unhandled Exception " + deadThreadId;
             while (true)
                 Thread.Sleep(TimeSpan.FromHours(1));
         }
@@ -340,43 +350,27 @@ namespace Topshelf.Runtime.Windows
         class WindowsSessionChangedArguments :
             SessionChangedArguments
         {
-            readonly SessionChangeReasonCode _reasonCode;
-            readonly int _sessionId;
-
             public WindowsSessionChangedArguments(SessionChangeDescription changeDescription)
             {
-                _reasonCode =
-                    (SessionChangeReasonCode)
-                    Enum.ToObject(typeof(SessionChangeReasonCode), (int)changeDescription.Reason);
-                _sessionId = changeDescription.SessionId;
+                ReasonCode = (SessionChangeReasonCode) Enum.ToObject(typeof(SessionChangeReasonCode), (int) changeDescription.Reason);
+                SessionId = changeDescription.SessionId;
             }
 
-            public SessionChangeReasonCode ReasonCode
-            {
-                get { return _reasonCode; }
-            }
+            public SessionChangeReasonCode ReasonCode { get; }
 
-            public int SessionId
-            {
-                get { return _sessionId; }
-            }
+            public int SessionId { get; }
         }
 
         class WindowsPowerEventArguments :
             PowerEventArguments
         {
-            readonly PowerEventCode _eventCode;
-
             public WindowsPowerEventArguments(PowerBroadcastStatus powerStatus)
             {
-                _eventCode = (PowerEventCode) Enum.ToObject(typeof(PowerEventCode), (int)powerStatus);
+                EventCode = (PowerEventCode) Enum.ToObject(typeof(PowerEventCode), (int) powerStatus);
             }
 
 
-            public PowerEventCode EventCode
-            {
-                get { return _eventCode; }
-            }
+            public PowerEventCode EventCode { get; }
         }
     }
 }

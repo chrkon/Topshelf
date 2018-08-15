@@ -21,9 +21,21 @@ namespace Topshelf
         public static HostConfigurator RunAs(this HostConfigurator configurator, string username, string password)
         {
             if (configurator == null)
-                throw new ArgumentNullException("configurator");
+                throw new ArgumentNullException(nameof(configurator));
 
             var runAsConfigurator = new RunAsUserHostConfigurator(username, password);
+
+            configurator.AddConfigurator(runAsConfigurator);
+
+            return configurator;
+        }
+
+        public static HostConfigurator RunAsVirtualServiceAccount(this HostConfigurator configurator)
+        {
+            if (configurator == null)
+                throw new ArgumentNullException(nameof(configurator));
+
+            var runAsConfigurator = new RunAsVirtualAccountHostConfigurator();
 
             configurator.AddConfigurator(runAsConfigurator);
 
@@ -33,7 +45,7 @@ namespace Topshelf
         public static HostConfigurator RunAsPrompt(this HostConfigurator configurator)
         {
             if (configurator == null)
-                throw new ArgumentNullException("configurator");
+                throw new ArgumentNullException(nameof(configurator));
 
             var runAsConfigurator = new RunAsServiceAccountHostConfigurator(ServiceAccount.User);
 
@@ -45,7 +57,7 @@ namespace Topshelf
         public static HostConfigurator RunAsNetworkService(this HostConfigurator configurator)
         {
             if (configurator == null)
-                throw new ArgumentNullException("configurator");
+                throw new ArgumentNullException(nameof(configurator));
 
             var runAsConfigurator = new RunAsServiceAccountHostConfigurator(ServiceAccount.NetworkService);
 
@@ -57,7 +69,7 @@ namespace Topshelf
         public static HostConfigurator RunAsLocalSystem(this HostConfigurator configurator)
         {
             if (configurator == null)
-                throw new ArgumentNullException("configurator");
+                throw new ArgumentNullException(nameof(configurator));
 
             var runAsConfigurator = new RunAsServiceAccountHostConfigurator(ServiceAccount.LocalSystem);
 
@@ -69,7 +81,7 @@ namespace Topshelf
         public static HostConfigurator RunAsLocalService(this HostConfigurator configurator)
         {
             if (configurator == null)
-                throw new ArgumentNullException("configurator");
+                throw new ArgumentNullException(nameof(configurator));
 
             var runAsConfigurator = new RunAsServiceAccountHostConfigurator(ServiceAccount.LocalService);
 

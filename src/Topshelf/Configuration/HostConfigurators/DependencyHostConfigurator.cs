@@ -27,7 +27,7 @@ namespace Topshelf.HostConfigurators
         public DependencyHostConfigurator(string name)
         {
             if (name == null)
-                throw new ArgumentNullException("name");
+                throw new ArgumentNullException(nameof(name));
 
             Name = name;
         }
@@ -43,7 +43,7 @@ namespace Topshelf.HostConfigurators
         public HostBuilder Configure(HostBuilder builder)
         {
             if (builder == null)
-                throw new ArgumentNullException("builder");
+                throw new ArgumentNullException(nameof(builder));
 
             builder.Match<InstallBuilder>(x => x.AddDependency(Name));
 
